@@ -1,1 +1,2 @@
 # open-learn
+Open Learn is an AI-powered learning platform designed to track user progress, provide personalized feedback, and reinforce learning through gamification and adaptive strategies. Similar to Duolingo, it enhances motivation with progress tracking and reinforcement techniques. The platform dynamically generates structured study materials and learning paths from open-source resources, ensuring accessible, high-quality education. By combining AI-driven guidance with engagement features, Open Learn offers a tailored and effective self-learning experience
