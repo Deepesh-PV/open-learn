@@ -5,6 +5,7 @@ from roadmap import rephrase_input,roadmap,CoursePlan
 from pydantic import BaseModel
 from typing import Optional
 from dotenv import load_dotenv
+from youtube_resource import youtube_playlist_result,youtube_result
 load_dotenv("api.env")
 app=FastAPI()
 import random
@@ -31,7 +32,11 @@ def create_course(course:CoursePlan):
 if __name__=="__main__":
     course=CoursePlan(title="machine learning",days=7,level="begginer",course_id=random.randint(1000,9999))
     out=create_course(course=course)
+    if out.playlist==True:
+        out.videos=youtube_playlist_result(rephrase_input(course.title,course.level))
+    else:
+        out.videos=youtube_result(rephrase_input(course.title,course.level))
     print(out)
-
+    
 
 

@@ -3,10 +3,10 @@ from langchain_groq import ChatGroq
 from langchain_groq import ChatGroq
 import json
 from dotenv import load_dotenv
-load_dotenv()
+
 from pydantic import BaseModel
 from typing import Optional
-
+load_dotenv("api.env")
 
 
 
@@ -17,6 +17,8 @@ class CoursePlan(BaseModel):
     days:int
     level:str
     road_map:Optional[list]=None
+    playlist:bool=True
+    videos:Optional[list]=None
 
 
 
