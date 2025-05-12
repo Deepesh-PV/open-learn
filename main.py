@@ -42,6 +42,7 @@ def select_video(course:CoursePlan,url:str):
 if __name__=="__main__":
     course=CoursePlan(title="machine learning",days=7,level="begginer",course_id=random.randint(1000,9999),playlist=False)
     out=create_course(course=course)
+    print(out)
     
 
 

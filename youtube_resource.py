@@ -1,6 +1,6 @@
 from googlesearch import search
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional,List
 import yt_dlp
 from roadmap import rephrase_input
 from dotenv import load_dotenv
@@ -16,7 +16,7 @@ class Video(BaseModel):
 class Playlist(BaseModel):
     url:str
     title:Optional[str]=None
-    videos:Optional[list]=None
+    videos:Optional[List[Video]]=None
     description:Optional[str]=None
     count:Optional[int]=None
     thumbnail:Optional[list]=None
@@ -80,9 +80,17 @@ def youtube_playlist_result(q:str)->list:
         final_playlist.append(get_playlist_metadata(playlist=playlist))
     return final_playlist
 
+def missing_video(q:str)->Video:
+    query=f"site:youtube.com -inurl:shorts -inurl:playlist {q}"
+    results=search(query,num_results=1)
+    for url in results:
+        video=Video(url=url)
+        break
+    video=get_video_metadata(video=video)
+    return video
+
+
 if __name__=="__main__":
     print(rephrase_input("guitar tutorials","begginer"))
-    video=youtube_playlist_result(rephrase_input("guitar tutorials","begginer"))
-    for v in video:
-        print(v)
-    
+    video=missing_video(rephrase_input("statistics","begginer"))
+    print(video)
