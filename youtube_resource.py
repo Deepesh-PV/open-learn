@@ -4,6 +4,8 @@ from typing import Optional,List
 import yt_dlp
 from roadmap import rephrase_input
 from dotenv import load_dotenv
+import json
+from yt_dlp import YoutubeDL
 load_dotenv("api.env")
 
 class Video(BaseModel):
@@ -33,7 +35,6 @@ def get_video_metadata(video:Video)->Video:
     info=dict()
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(video.url, download=False)
-    print('over')
     video.description=info['description']
     video.title=info['title']
     video.keyMoments=info['chapters']
@@ -89,8 +90,25 @@ def missing_video(q:str)->Video:
     video=get_video_metadata(video=video)
     return video
 
+def get_video_urls_from_playlist(playlist_url):
+    ydl_opts = {
+        'extract_flat': True,  # Do not download the videos
+        'quiet': True,         # Suppress output
+        'skip_download': True, # Just extract info
+    }
 
-if __name__=="__main__":
-    print(rephrase_input("guitar tutorials","begginer"))
-    video=missing_video(rephrase_input("statistics","begginer"))
-    print(video)
+    with YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(playlist_url, download=False)
+        entries = info.get('entries', [])
+        video_urls = [f"https://www.youtube.com/watch?v={entry['id']}" for entry in entries]
+        final_video_list=[]
+        print(len(video_urls))
+        for url in video_urls:
+            video=Video(url=url)
+            video=get_video_metadata(video)
+            final_video_list.append(video)
+        final_video_list=[s.dict() for s in final_video_list]
+        return final_video_list
+
+
+
