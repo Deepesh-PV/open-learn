@@ -19,6 +19,8 @@ class CoursePlan(BaseModel):
     road_map:Optional[list]=None
     playlist:bool=True
     videos:Optional[list]=None
+    progress:Optional[dict]=None
+    progress_indicator:Optional[float]=0
 
 
 
@@ -70,6 +72,9 @@ def rephrase_input(topic:str,level:str):
     return out 
 
 
-if __name__=="__main__":
-    rephrase_input("machine learning","intermidiate")
 
+    
+
+
+if __name__=="__main__":
+    print(roadmap("machine learning",days=7,level="begginer"))

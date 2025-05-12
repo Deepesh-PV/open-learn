@@ -23,9 +23,11 @@ class Resourse(BaseModel):
     playlist:list #its a list of object of class type Video
 
 
+
 def create_course(course:CoursePlan):
     plan=roadmap(course.title,course.days,course.level)
     course.road_map=[(day,[subtopic for subtopic in plan[day]])for day in plan.keys()]
+    course.progress={key:False for key in plan.keys()}
     if course.playlist==True:
         course.videos=youtube_playlist_result(rephrase_input(course.title,course.level))
     else:
@@ -37,12 +39,23 @@ def select_video(course:CoursePlan,url:str):
         if video.video_url==url:
             course.videos=[video]
             break
+
+
+def progress_update(course:CoursePlan,day:str):
+    CoursePlan.progress['day']=True
+    total=len(CoursePlan.progress)
+    true_percent=sum(value is True for value in CoursePlan.progress.values())
+    true_percent=float(true_percent/total)*100
+    CoursePlan.progress_indicator=true_percent
+    
+
     
    
 if __name__=="__main__":
     course=CoursePlan(title="machine learning",days=7,level="begginer",course_id=random.randint(1000,9999),playlist=False)
     out=create_course(course=course)
-    print(out)
+
+    print(out.progress)
     
 
 
