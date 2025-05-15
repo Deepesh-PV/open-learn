@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Create Course</title>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f9f9f9; }
+    form, .popup { background: #fff; padding: 20px; border-radius: 8px; max-width: 600px; margin: auto; }
+    input, select, button { width: 100%; margin-top: 10px; padding: 10px; }
+    table { width: 100%; margin-top: 20px; border-collapse: collapse; }
+    th, td { padding: 10px; border: 1px solid #ccc; }
+    th { background: #007BFF; color: white; }
+    img { width: 80px; height: 60px; object-fit: cover; }
+    .select-btn { background: #28a745; color: white; border: none; padding: 6px 10px; cursor: pointer; }
+    .popup { display: none; position: fixed; top: 5%; left: 5%; width: 90vw; height: 90vh; overflow: auto; box-shadow: 0 0 20px rgba(0,0,0,0.3); }
+  </style>
+</head>
+<body>
+
+<h2>Create New Course</h2>
+<form id="courseForm">
+  <label>Title: <input type="text" id="title" required></label>
+  <label>Days: <input type="number" id="days" required></label>
+  <label>Level:
+    <select id="level" required>
+      <option value="">--Select--</option>
+      <option>Beginner</option>
+      <option>Intermediate</option>
+      <option>Advanced</option>
+    </select>
+  </label>
+  <label>Playlist:
+    <select id="playlist" required>
+      <option value="">--Select--</option>
+      <option>True</option>
+      <option>False</option>
+    </select>
+  </label>
+  <button type="submit">Create Course</button>
+  <p id="status" style="color:green;"></p>
+</form>
+
+<!-- Popup -->
+<div id="popup" class="popup">
+  <h3>📘 Course Content</h3>
+  <table id="videoTable">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>URL</th>
+        <th id="thumbnailHeader">Thumbnail</th>
+        <th>Description</th>
+        <th>Select</th>
+      </tr>
+    </thead>
+    <tbody id="videoBody"></tbody>
+  </table>
+  <button onclick="document.getElementById('popup').style.display='none'">Close</button>
+</div>
+
+<script>
+let currentCourseId = null;
+
+document.getElementById("courseForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const title = document.getElementById("title").value;
+  const days = parseInt(document.getElementById("days").value);
+  const level = document.getElementById("level").value;
+  const playlist = document.getElementById("playlist").value;
+
+  document.getElementById("status").textContent = "⏳ Creating course...";
+
+  const res = await fetch("http://127.0.0.1:8000/createcourse", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ title, days, level, playlist })
+  });
+  const data = await res.json();
+
+  if (res.ok && data.course_id) {
+    document.getElementById("status").textContent = "✅ Course created!";
+    currentCourseId = data.course_id;
+    await fetchAndShowCourse(currentCourseId);
+  } else {
+    document.getElementById("status").textContent = "❌ Error: " + (data.detail || "Unknown error");
+  }
+});
+
+async function fetchAndShowCourse(courseId) {
+  const res = await fetch(`http://127.0.0.1:8000/get_course/${courseId}`, { credentials: "include" });
+  const course = await res.json();
+
+  const videoBody = document.getElementById("videoBody");
+  videoBody.innerHTML = "";
+
+  const hasThumbnails = course.videos.some(v => v.thumbnail);
+  document.getElementById("thumbnailHeader").style.display = hasThumbnails ? "table-cell" : "none";
+
+  for (let video of course.videos) {
+    // Summarize description using the API
+    const descRes = await fetch("http://127.0.0.1:8000/summarize_description", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ desc: video.description || "" })
+    });
+
+    const descData = await descRes.json();
+    const shortDesc = descData.description || "";
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${video.title}</td>
+      <td><a href="${video.url}" target="_blank">${video.url}</a></td>
+      ${hasThumbnails ? `<td style="display:table-cell;">${video.thumbnail ? `<a href="${video.thumbnail}" target="_blank"><img src="${video.thumbnail}" /></a>` : ""}</td>` : ""}
+      <td>${shortDesc}</td>
+      <td><button class="select-btn" onclick="selectVideo('${video.url}')">Select</button></td>
+    `;
+    videoBody.appendChild(row);
+  }
+
+  document.getElementById("popup").style.display = "block";
+}
+
+async function selectVideo(videoUrl) {
+  if (!currentCourseId) return;
+
+  const payload = {
+    selected_url: videoUrl,
+    course_id: currentCourseId
+  };
+
+  const saveRes = await fetch("http://127.0.0.1:8000/save_course", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload)
+  });
+
+  const result = await saveRes.json();
+  if (saveRes.ok) {
+    alert("✅ Video selected and saved!");
+  } else {
+    alert("❌ Failed: " + (result.detail || "Unknown error"));
+  }
+}
+</script>
+
+</body>
+</html>

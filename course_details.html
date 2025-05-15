@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Course Details</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .course-details-box {
+      border: 1px solid #ddd;
+      margin: 20px;
+      padding: 15px;
+      border-radius: 5px;
+      background-color: #f9f9f9;
+    }
+    .course-details-box h2 {
+      margin-top: 0;
+    }
+    .course-details-box p,
+    .course-details-box li {
+      margin: 5px 0;
+    }
+    ul {
+      padding-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Course Details</h1>
+  <div id="courseDetails"></div>
+
+  <script>
+    const courseDetails = JSON.parse(sessionStorage.getItem("courseDetails"));
+    const container = document.getElementById("courseDetails");
+
+    function renderValue(key, value, parentEl) {
+      if (typeof value === "object" && value !== null) {
+        const subTitle = document.createElement("h3");
+        subTitle.textContent = key + ":";
+        parentEl.appendChild(subTitle);
+
+        if (Array.isArray(value)) {
+          const ul = document.createElement("ul");
+          value.forEach(item => {
+            const li = document.createElement("li");
+            if (typeof item === "object") {
+              li.textContent = JSON.stringify(item, null, 2);
+            } else {
+              li.textContent = item;
+            }
+            ul.appendChild(li);
+          });
+          parentEl.appendChild(ul);
+        } else {
+          const ul = document.createElement("ul");
+          for (const subKey in value) {
+            const li = document.createElement("li");
+            const val = value[subKey];
+            if (typeof val === "object") {
+              li.textContent = `${subKey}:`;
+              const nestedUl = document.createElement("ul");
+              for (const nestedKey in val) {
+                const nestedLi = document.createElement("li");
+                nestedLi.textContent = `${nestedKey}: ${val[nestedKey]}`;
+                nestedUl.appendChild(nestedLi);
+              }
+              li.appendChild(nestedUl);
+            } else {
+              li.textContent = `${subKey}: ${val}`;
+            }
+            ul.appendChild(li);
+          }
+          parentEl.appendChild(ul);
+        }
+
+      } else {
+        const p = document.createElement("p");
+        p.textContent = `${key}: ${value}`;
+        parentEl.appendChild(p);
+      }
+    }
+
+    if (courseDetails) {
+      const box = document.createElement("div");
+      box.className = "course-details-box";
+
+      for (const key in courseDetails) {
+        renderValue(key, courseDetails[key], box);
+      }
+
+      container.appendChild(box);
+    } else {
+      container.innerHTML = "<p>Course details not found in session storage.</p>";
+    }
+  </script>
+</body>
+</html>

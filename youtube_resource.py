@@ -8,6 +8,7 @@ import json
 from yt_dlp import YoutubeDL
 load_dotenv("api.env")
 
+
 class Video(BaseModel):
     url:str
     thumbnail:Optional[str]=None
@@ -59,7 +60,7 @@ def get_playlist_metadata(playlist:Playlist)->Playlist:
 
 def youtube_result(q:str)->list:
     query=f"site:youtube.com -inurl:shorts -inurl:playlist {q}"
-    results=search(query,num_results=10)
+    results=search(query,num_results=4)
     videos=[]
     for url in results:
         video=Video(url=url)
@@ -67,6 +68,7 @@ def youtube_result(q:str)->list:
     final_videos=[]
     for video in videos:
         final_videos.append(get_video_metadata(video=video))
+        print("done video")
     return final_videos
 
 def youtube_playlist_result(q:str)->list:
@@ -74,11 +76,13 @@ def youtube_playlist_result(q:str)->list:
     results=search(query,num_results=5)
     print("done")
     playlists=[]
+
     final_playlist=[]
     for url in results:
         playlists.append(Playlist(url=url))
     for playlist in playlists:
         final_playlist.append(get_playlist_metadata(playlist=playlist))
+        print("done playlist")
     return final_playlist
 
 def missing_video(q:str)->Video:

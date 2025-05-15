@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Your Courses</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+    }
+
+    /* Left sidebar */
+    .sidebar {
+      width: 200px;
+      background-color: #2c3e50;
+      color: white;
+      height: 100vh;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .sidebar h2 {
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+
+    .sidebar button {
+      padding: 10px 15px;
+      background-color: #3498db;
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    .sidebar button:hover {
+      background-color: #2980b9;
+    }
+
+    /* Main content area */
+    .main {
+      flex-grow: 1;
+      padding: 20px;
+    }
+
+    .course-box {
+      display: inline-block;
+      margin: 10px;
+    }
+
+    .course-button {
+      padding: 8px 12px;
+      font-size: 14px;
+      border: none;
+      background-color: #f1f1f1;
+      color: #333;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .course-button:hover {
+      background-color: #ddd;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h2>Course Menu</h2>
+    <button onclick="window.location.href='course_create.html'">
+      ➕ Create Course
+    </button>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main">
+    <h1>Your Courses</h1>
+    <div id="courseList"></div>
+  </div>
+
+  <script>
+    async function getCourseId() {
+      try {
+        const response = await fetch("http://127.0.0.1:8000/get_course_id", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!response.ok) throw new Error("Failed to retrieve courses");
+
+        const data = await response.json();
+        const courseList = document.getElementById("courseList");
+
+        for (const courseId of data.course_ids) {
+          const courseData = await fetchCourseDetails(courseId);
+          if (!courseData) continue;
+
+          const courseBox = document.createElement("div");
+          courseBox.classList.add("course-box");
+
+          const courseButton = document.createElement("button");
+          courseButton.classList.add("course-button");
+          courseButton.textContent = courseData.title || "Untitled Course";
+
+          courseButton.addEventListener("click", () => {
+            sessionStorage.setItem("courseDetails", JSON.stringify(courseData));
+            window.location.href = "course_details.html";
+          });
+
+          courseBox.appendChild(courseButton);
+          courseList.appendChild(courseBox);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching course list:", error);
+        alert("❌ " + error.message);
+      }
+    }
+
+    async function fetchCourseDetails(courseId) {
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/get_course/${courseId}`, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch course");
+        return await res.json();
+      } catch (err) {
+        console.error(`❌ Error fetching course ${courseId}:`, err);
+        return null;
+      }
+    }
+
+    window.onload = getCourseId;
+  </script>
+</body>
+</html>
