@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 from bcrypt import  hashpw,checkpw,gensalt
-from fastapi import FastAPI,Response,HTTPException,Request
+from fastapi import FastAPI,Response,HTTPException,Request,BackgroundTasks
+from fastapi.responses import JSONResponse
 from uuid import  uuid4
 from pydantic import BaseModel
 from typing import Optional
@@ -31,7 +32,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5500"],  # your frontend origin
+    allow_origins=["*"],  # your frontend origin
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,6 +46,23 @@ class user(BaseModel):
 
 salt=gensalt()
 
+def run_matching_logic(course_main, course_id):
+    try:
+        data = course_main['videos']
+        keymoments = data['keyMoments']
+        merge.download_subtitles(data['url'])
+        chapter = merge.load_info_ranges(keymoments)
+        subtitle = merge.parse_vtt_file("./info.vtt")
+        inp = merge.group_subtitles_to_chapters(video_url=data['url'], chapters=chapter, subtitles=subtitle)
+        out = match.load_cleaned_subtitles(inp)
+        topics_list = course_main['road_map']
+        topics_dict = match.load_roadmap(topics_list)
+        matched = match.enrich_roadmap(roadmap=topics_dict, chapters=out)
+        matched_topics = match.roadmap_to_dict(matched)
+        course_data.update_one({"course_id": course_id}, {"$set": {"videos": matched_topics}})
+        print("✅ Matching done for course:", course_id)
+    except Exception as e:
+        print(f"❌ Error in background matching task: {e}")
 
 
 @app.post("/create_user")
@@ -147,26 +165,27 @@ def rephrase(desc:desc):
     out=rephrase_description(desc=desc.desc)
     return {"description":out}
 
-@app.post("/match")
-def matchingvideos(course_id:selected_url,):
-    # user=session_ids.find_one({"session_id":request.cookies.get("session_id")})
-    # if request.cookies.get("session_id")==user['session_id']:
-        course_main=course_data.find_one({"course_id":course_id.course_id})
-        data=course_main['videos']
-        keymoments=data['keyMoments']
-        merge.download_subtitles(data['url'])
-        chapter=merge.load_info_ranges(keymoments)
-        subtitle=merge.parse_vtt_file("./info.vtt")
-        out=merge.group_subtitles_to_chapters(video_url=data['url'],chapters=chapter,subtitles=subtitle)
-        topics_list=course_main['road_map']
-        topics_dict=match.load_roadmap(topics_list)
-        print("updated")
+@app.post("/match/{course_id}")
+def matchingvideos(course_id: str, request: Request, background_tasks: BackgroundTasks):
+    user = session_ids.find_one({"session_id": request.cookies.get("session_id")})
+    if request.cookies.get("session_id") == user['session_id']:
+        course_main = course_data.find_one({"course_id": course_id})
+        if not course_main:
+            raise HTTPException(status_code=404, detail="Course not found")
+
+        background_tasks.add_task(run_matching_logic, course_main, course_id)
+        return {"message": "✅ Matching started in background"}
+    else:
+        raise HTTPException(status_code=401, detail="❌ Course matching failed")
+
 
 if __name__=="__main__":
     course_main=course_data.find_one({"course_id":"3b263542-aaa4-4cfb-927e-3aec11e2ca0f"})
     inp=course_main['videos']
     out=match.load_cleaned_subtitles(inp)
     road_map_dict=match.load_roadmap(course_main['road_map'])
-    something=match.enrich_roadmap(roadmap=road_map_dict,chapters=out)
-    course_data.update_one({"course_id":"3b263542-aaa4-4cfb-927e-3aec11e2ca0f"},{"$set":{"videos":something}})
+    matched=match.enrich_roadmap(roadmap=road_map_dict,chapters=out)
+    matched_topics=match.roadmap_to_dict(matched)
+    course_data.update_one({"course_id":"3b263542-aaa4-4cfb-927e-3aec11e2ca0f"},{"$set":{"videos":matched_topics}})
+
     print("dbms updated")    

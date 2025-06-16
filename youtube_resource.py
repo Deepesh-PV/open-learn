@@ -5,8 +5,10 @@ import yt_dlp
 from roadmap import rephrase_input
 from dotenv import load_dotenv
 import json
+import time
 from yt_dlp import YoutubeDL
 load_dotenv("api.env")
+from youtube_search import search_youtube_video
 
 
 class Video(BaseModel):
@@ -86,12 +88,13 @@ def youtube_playlist_result(q:str)->list:
     return final_playlist
 
 def missing_video(q:str)->Video:
-    query=f"site:youtube.com -inurl:shorts -inurl:playlist {q}"
-    results=search(query,num_results=1)
+    results=[search_youtube_video(q)]
     for url in results:
         video=Video(url=url)
+        print("video")
         break
     video=get_video_metadata(video=video)
+    print("video meta-details")
     return video
 
 def get_video_urls_from_playlist(playlist_url):

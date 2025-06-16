@@ -70,6 +70,7 @@ def enrich_roadmap(roadmap: List[RoadMapDay], chapters: List[SubtitleChapter]) -
             match = match_topic_to_chapter(topic, chapters)
             
             if match:
+                print("match")
                 enriched_topic = EnrichedTopic(
                     topic=topic,
                     matched_chapter=match.title,
@@ -99,6 +100,21 @@ def enrich_roadmap(roadmap: List[RoadMapDay], chapters: List[SubtitleChapter]) -
 
     return enriched
 
+def roadmap_to_dict(roadmap:List[EnrichedRoadMapDay]):
+    return [
+        {
+            "day": day.day,
+            "topics": [
+                {
+                    "topic": topic.topic,
+                    "matched_chapter": topic.matched_chapter,
+                    "url": topic.url
+                }
+                for topic in day.topics
+            ]
+        }
+        for day in roadmap
+    ]
 
 
 # === Save output ===

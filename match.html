@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Match Videos to Course</title>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f9f9f9; }
+    .container { background: #fff; padding: 20px; border-radius: 8px; max-width: 600px; margin: auto; }
+    button { width: 100%; margin-top: 10px; padding: 10px; background: #007BFF; color: white; border: none; cursor: pointer; border-radius: 4px; }
+    #viewCourseBtn { background: #28a745; display: none; }
+    table { width: 100%; margin-top: 20px; border-collapse: collapse; }
+    th, td { padding: 10px; border: 1px solid #ccc; }
+    th { background: #007BFF; color: white; }
+    iframe { width: 100%; height: 180px; }
+    .select-btn { background: #28a745; color: white; border: none; padding: 6px 10px; cursor: pointer; }
+    .popup { display: none; position: fixed; top: 5%; left: 5%; width: 90vw; height: 90vh; overflow: auto; box-shadow: 0 0 20px rgba(0,0,0,0.3); background: white; padding: 20px; border-radius: 8px;}
+    .loader { display: none; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 2s linear infinite; margin: 10px auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Match Videos to Course</h2>
+  <p id="courseInfo">Loading course information...</p>
+  
+  <button id="matchVideosBtn">Match Videos to Roadmap</button>
+  <div class="loader" id="matchLoader"></div>
+  <p id="status" style="color:green;"></p>
+  
+  <button id="viewVideosBtn">View Available Videos</button>
+  <button id="viewCourseBtn">Go to Course Page</button>
+</div>
+
+<div id="popup" class="popup">
+  <h3>📘 Available Videos</h3>
+  <table id="videoTable">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th colspan="2">Video</th>
+        <th>Description</th>
+        <th>Select</th>
+      </tr>
+    </thead>
+    <tbody id="videoBody"></tbody>
+  </table>
+  <button onclick="document.getElementById('popup').style.display='none'">Close</button>
+</div>
+
+<script>
+let currentCourseId = null;
+
+// On load, check for course_id
+window.addEventListener('load', async () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const courseId = urlParams.get('course_id');
+  
+  if (!courseId) {
+    document.getElementById("courseInfo").textContent = "❌ No course ID provided. Please create a course first.";
+    document.getElementById("matchVideosBtn").disabled = true;
+    document.getElementById("viewVideosBtn").disabled = true;
+    return;
+  }
+  
+  currentCourseId = courseId;
+  
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/get_course/${courseId}`, { credentials: "include" });
+    
+    if (!res.ok) {
+      throw new Error(`Failed to fetch course: ${res.status}`);
+    }
+    
+    const course = await res.json();
+    document.getElementById("courseInfo").textContent = `Course: ${course.title} (${course.level}, ${course.days} days)`;
+  } catch (err) {
+    document.getElementById("courseInfo").textContent = `❌ Error loading course: ${err.message}`;
+    document.getElementById("matchVideosBtn").disabled = true;
+    document.getElementById("viewVideosBtn").disabled = true;
+  }
+});
+
+// Match videos button
+document.getElementById("matchVideosBtn").addEventListener("click", async () => {
+  if (!currentCourseId) {
+    alert("No course selected!");
+    return;
+  }
+
+  const statusElem = document.getElementById("status");
+  statusElem.textContent = "⏳ Matching videos...";
+  document.getElementById("matchLoader").style.display = "block";
+  document.getElementById("matchVideosBtn").disabled = true;
+
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/match/${currentCourseId}`, {
+      method: "POST",
+      credentials: "include"
+    });
+
+    let data;
+    const text = await res.text();
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { detail: text };
+    }
+
+    if (res.ok) {
+      statusElem.textContent = "✅ Videos matched successfully!";
+      document.getElementById("viewCourseBtn").style.display = "block";
+    } else {
+      statusElem.textContent = "❌ Error: " + (data.detail || "Unknown error");
+    }
+  } catch (err) {
+    console.error("❌ Fetch error:", err);
+    statusElem.textContent = "❌ Error: " + err.message;
+  } finally {
+    document.getElementById("matchLoader").style.display = "none";
+    document.getElementById("matchVideosBtn").disabled = false;
+  }
+});
+
+// View videos button
+document.getElementById("viewVideosBtn").addEventListener("click", async () => {
+  if (!currentCourseId) {
+    alert("No course selected!");
+    return;
+  }
+  
+  await fetchAndShowCourse(currentCourseId);
+});
+
+// View course button
+document.getElementById("viewCourseBtn").addEventListener("click", () => {
+  if (currentCourseId) {
+    window.location.href = `course_window.html?course_id=${currentCourseId}`;
+  } else {
+    alert("No course selected!");
+  }
+});
+
+function getEmbedUrl(url) {
+  try {
+    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+    if (ytMatch) {
+      return `https://www.youtube.com/embed/${ytMatch[1]}`;
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}
+
+async function fetchAndShowCourse(courseId) {
+  try {
+    document.getElementById("videoBody").innerHTML = "Loading videos...";
+    document.getElementById("popup").style.display = "block";
+    
+    const res = await fetch(`http://127.0.0.1:8000/get_course/${courseId}`, { credentials: "include" });
+    const course = await res.json();
+
+    const videoBody = document.getElementById("videoBody");
+    videoBody.innerHTML = "";
+
+    if (course.videos.length === 0) {
+      videoBody.innerHTML = "<tr><td colspan='5'>No videos available for this course</td></tr>";
+      return;
+    }
+
+    for (let video of course.videos) {
+      const descRes = await fetch("http://127.0.0.1:8000/summarize_description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ desc: video.description || "" })
+      });
+
+      const descData = await descRes.json();
+      const shortDesc = descData.description || "";
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${video.title}</td>
+        <td colspan="2">
+          <iframe src="${getEmbedUrl(video.url)}" frameborder="0" allowfullscreen></iframe>
+        </td>
+        <td>${shortDesc}</td>
+        <td><button class="select-btn" onclick="selectVideo('${video.url}')">Select</button></td>
+      `;
+      videoBody.appendChild(row);
+    }
+  } catch (err) {
+    console.error("Failed to fetch course data:", err);
+    document.getElementById("videoBody").innerHTML = `<tr><td colspan='5'>Error loading videos: ${err.message}</td></tr>`;
+  }
+}
+
+async function selectVideo(videoUrl) {
+  if (!currentCourseId) return;
+
+  const payload = {
+    selected_url: videoUrl,
+    course_id: currentCourseId
+  };
+
+  try {
+    const saveRes = await fetch("http://127.0.0.1:8000/save_course", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload)
+    });
+
+    const result = await saveRes.json();
+    if (saveRes.ok) {
+      alert("✅ Video selected and saved!");
+    } else {
+      alert("❌ Failed: " + (result.detail || "Unknown error"));
+    }
+  } catch (err) {
+    alert("❌ Error saving selection: " + err.message);
+  }
+}
+</script>
+
+</body>
+</html>

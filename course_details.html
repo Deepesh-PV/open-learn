@@ -7,38 +7,248 @@
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
+      background-color: #f4f4f4;
+      color: #333;
+      transition: background-color 0.3s, color 0.3s;
     }
+
+    h1 {
+      text-align: center;
+      color: inherit;
+      margin-bottom: 20px;
+    }
+
+    .dark-mode-toggle {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 9999;
+      padding: 8px 12px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
     .course-details-box {
       border: 1px solid #ddd;
-      margin: 20px;
+      margin: 20px auto;
+      padding: 20px;
+      border-radius: 8px;
+      background-color: #fff;
+      max-width: 800px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .course-details-box h2 {
+      margin-top: 0;
+      color: #2c3e50;
+    }
+
+    .course-details-box p,
+    .course-details-box li {
+      margin: 8px 0;
+      color: inherit;
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+
+    .progress-container {
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .progress-bar {
+      width: 100%;
+      background-color: #e0e0e0;
+      border-radius: 5px;
+      overflow: hidden;
+      height: 20px;
+      margin-top: 10px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background-color: #28a745;
+      transition: width 0.3s ease-in-out;
+    }
+
+    .day-box {
+      border: 1px solid #ddd;
+      margin: 10px 0;
       padding: 15px;
       border-radius: 5px;
       background-color: #f9f9f9;
     }
-    .course-details-box h2 {
-      margin-top: 0;
+
+    .day-box.completed {
+      border-left: 5px solid #28a745;
     }
-    .course-details-box p,
-    .course-details-box li {
-      margin: 5px 0;
+
+    .day-box h3 {
+      margin: 0 0 10px;
+      color: #2c3e50;
     }
-    ul {
-      padding-left: 20px;
+
+    .day-box ul {
+      margin: 0;
+    }
+
+    .day-box li {
+      list-style: none;
+      padding: 5px 0;
+    }
+
+    .day-box li.completed::before {
+      content: "✔ ";
+      color: #28a745;
+    }
+
+    .day-box li:not(.completed)::before {
+      content: "○ ";
+      color: #888;
+    }
+
+    .video-container {
+      margin-top: 15px;
+    }
+
+    .video-container h4 {
+      margin: 10px 0 5px;
+      color: #2c3e50;
+    }
+
+    .video-container iframe {
+      width: 100%;
+      max-width: 560px;
+      height: 315px;
+      border: none;
+      border-radius: 5px;
+    }
+
+    /* DARK MODE STYLES */
+    body.dark-mode {
+      background-color: #121212;
+      color: #e0e0e0;
+    }
+
+    body.dark-mode .course-details-box {
+      background-color: #1e1e1e;
+      border-color: #444;
+      box-shadow: 0 2px 8px rgba(255, 255, 255, 0.05);
+    }
+
+    body.dark-mode .day-box {
+      background-color: #2a2a2a;
+      border-color: #444;
+    }
+
+    body.dark-mode .video-container h4,
+    body.dark-mode .day-box h3,
+    body.dark-mode h1 {
+      color: #f4f4f4;
     }
   </style>
 </head>
 <body>
-  <h1>Course Details</h1>
+  <button class="dark-mode-toggle" onclick="toggleDarkMode()">🌓 Dark Mode</button>
+
+  <h1 id="courseTitle"></h1>
+  <div class="progress-container">
+    <h3>Course Progress</h3>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <p id="progressText"></p>
+  </div>
   <div id="courseDetails"></div>
 
   <script>
     const courseDetails = JSON.parse(sessionStorage.getItem("courseDetails"));
     const container = document.getElementById("courseDetails");
+    const titleElement = document.getElementById("courseTitle");
+    const progressFill = document.getElementById("progressFill");
+    const progressText = document.getElementById("progressText");
+
+    function capitalizeTitle(str) {
+      return str.replace(/\b\w/g, char => char.toUpperCase());
+    }
+
+    function getYouTubeEmbedUrl(url) {
+      const urlObj = new URL(url);
+      const videoId = urlObj.searchParams.get("v");
+      const startTime = urlObj.searchParams.get("t") || "0";
+      return `https://www.youtube.com/embed/${videoId}?start=${startTime.replace('s', '')}`;
+    }
 
     function renderValue(key, value, parentEl) {
-      if (typeof value === "object" && value !== null) {
+      if (key === "title") {
+        titleElement.textContent = capitalizeTitle(value);
+        return;
+      }
+
+      if (key === "progress_indicator") {
+        const percentage = (value / courseDetails.days) * 100;
+        progressFill.style.width = `${percentage}%`;
+        progressText.textContent = `${Math.round(percentage)}% Complete`;
+        return;
+      }
+
+      if (key === "road_map") {
+        const daysProgress = courseDetails.progress || {};
+        const videos = courseDetails.videos || [];
+        value.forEach(([day, topics]) => {
+          const dayBox = document.createElement("div");
+          dayBox.className = `day-box ${daysProgress[day] ? "completed" : ""}`;
+          
+          const dayTitle = document.createElement("h3");
+          dayTitle.textContent = day;
+          dayBox.appendChild(dayTitle);
+
+          const ul = document.createElement("ul");
+          topics.forEach(topic => {
+            const li = document.createElement("li");
+            li.textContent = topic;
+            li.className = daysProgress[day] ? "completed" : "";
+            ul.appendChild(li);
+          });
+          dayBox.appendChild(ul);
+
+          const dayVideos = videos.find(v => v.day === day);
+          if (dayVideos && dayVideos.topics && dayVideos.topics.length > 0) {
+            const videoContainer = document.createElement("div");
+            videoContainer.className = "video-container";
+            const videoTitle = document.createElement("h4");
+            videoTitle.textContent = "Videos:";
+            videoContainer.appendChild(videoTitle);
+
+            dayVideos.topics.forEach(video => {
+              const videoItem = document.createElement("div");
+              const videoLabel = document.createElement("p");
+              videoLabel.textContent = `${video.topic} (${video.matched_chapter})`;
+              const iframe = document.createElement("iframe");
+              iframe.src = getYouTubeEmbedUrl(video.url);
+              iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+              iframe.allowFullscreen = true;
+              videoItem.appendChild(videoLabel);
+              videoItem.appendChild(iframe);
+              videoContainer.appendChild(videoItem);
+            });
+            dayBox.appendChild(videoContainer);
+          }
+
+          parentEl.appendChild(dayBox);
+        });
+        return;
+      }
+
+      if (typeof value === "object" && value !== null && key !== "progress" && key !== "videos") {
         const subTitle = document.createElement("h3");
-        subTitle.textContent = key + ":";
+        subTitle.textContent = key.charAt(0).toUpperCase() + key.slice(1) + ":";
         parentEl.appendChild(subTitle);
 
         if (Array.isArray(value)) {
@@ -74,12 +284,15 @@
           }
           parentEl.appendChild(ul);
         }
-
-      } else {
+      } else if (key !== "progress" && key !== "videos") {
         const p = document.createElement("p");
-        p.textContent = `${key}: ${value}`;
+        p.textContent = `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`;
         parentEl.appendChild(p);
       }
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark-mode");
     }
 
     if (courseDetails) {
