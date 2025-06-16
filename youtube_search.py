@@ -1,9 +1,9 @@
 import requests
 import re
-
-SCRAPE_DO_KEY = "25a5d54f8e64460c83cc9f81e367d1be5b9406f983d"
-
-
+from dotenv import load_dotenv
+import os
+load_dotenv("api.env")
+key=os.getenv("SCRAPE_DO_KEY")
 def search_youtube_video(query: str) -> str:
     google_query = f"site:youtube.com -inurl:shorts -inurl:playlist {query}"
     raw_search_url = f"https://www.google.com/search?q={google_query}&num=3"
@@ -12,7 +12,7 @@ def search_youtube_video(query: str) -> str:
     encoded_search_url = requests.utils.quote(raw_search_url, safe='')
 
     # Scrape.do URL with encoded target
-    proxy_url = f"https://api.scrape.do?token={SCRAPE_DO_KEY}&url={encoded_search_url}"
+    proxy_url = f"https://api.scrape.do?token={key}&url={encoded_search_url}"
     
     response = requests.get(proxy_url, timeout=10)
     
